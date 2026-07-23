@@ -20,34 +20,10 @@ import { EntryRepayIntentionData } from '@/apps/navi/intentions/entry-repay';
 import { EntryWithdrawIntentionData } from '@/apps/navi/intentions/entry-withdraw';
 import { EntryMultiDepositIntentionData } from '@/apps/navi/intentions/multi-deposit';
 import { TransactionSubType } from '@/apps/navi/types';
-import { SuiClient, getFullnodeUrl } from '@/compat/mysten-sui-json-rpc';
+import { getSuiGrpcClient } from '@/lib/suiGrpcClient';
 
+const suiGrpcClient = getSuiGrpcClient('sui:mainnet');
 import { TestSuite } from './testSuite';
-
-(() => {
-  if ((globalThis.fetch as any).isWraped) {
-    return;
-  }
-  const _fetch = globalThis.fetch;
-  globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-    const response = await _fetch(input, {
-      ...init,
-      headers: {
-        ...init?.headers,
-        Host: 'app.naviprotocol.io',
-        'User-Agent':
-          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36',
-        Referer: 'https://app.naviprotocol.io/',
-        origin: 'app.naviprotocol.io',
-      },
-    });
-    (globalThis.fetch as any).isWraped = true;
-    return response;
-  };
-})();
-
-const address = '0xfaba86400d9cc1d144bbc878bc45c4361d53a16c942202b22db5d26354801e8e';
-const client = new SuiClient({ url: getFullnodeUrl('mainnet'), network: 'mainnet' });
 
 const testWallet: WalletAccount = {
   address: '0xbb63274d2bd428b460d01dbae9a43ecd2a791f8d6624968c4d670055354ebcff',
@@ -69,7 +45,7 @@ describe('Navi App', () => {
     const tx = new Transaction();
     await depositCoinPTB(tx, 0, tx.splitCoins(tx.gas, [tx.pure.u64(500000)]));
     tx.setSender(testWallet.address);
-    const txBytes = await tx.build({ client });
+    const txBytes = await tx.build({ client: suiGrpcClient });
     const txBytes64 = Buffer.from(txBytes).toString('base64');
     const appContext = {
       content: txBytes64,
@@ -177,7 +153,7 @@ describe('Navi App', () => {
   });
 
   it('Test claim reward deserialize', async () => {
-    const rewards = await getUserAvailableLendingRewards(address);
+    const rewards = await getUserAvailableLendingRewards('0xc41d2d2b2988e00f9b64e7c41a5e70ef58a3ef835703eeb6bf1bd17a9497d9fe');
     const tx = new Transaction();
     await claimLendingRewardsPTB(tx, rewards);
 
